@@ -1,0 +1,14 @@
+# Development override: publishes db and api for local tooling.
+#
+#   docker compose -f docker-compose.yml -f compose.dev.yml up db api
+#   cd frontend && VITE_API_TARGET=http://localhost:8080 npm run dev
+#
+# db is published on 5433 to avoid clashing with a local PostgreSQL on 5432.
+
+services:
+  db:
+    ports:
+      - "5433:5432"
+  api:
+    ports:
+      - "8080:8080"

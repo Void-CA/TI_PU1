@@ -1,0 +1,56 @@
+# Full stack: PostgreSQL (internal network only) + API + web.
+#
+#   docker compose up --build
+#   open http://localhost:8080
+#
+# PostgreSQL is NOT published to the host: it only lives on the internal
+# Docker network. Only the web service exposes a port.
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: pu1
+      POSTGRES_PASSWORD: pu1
+      POSTGRES_DB: pu1
+    networks:
+      - interna
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pu1 -d pu1"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+
+  api:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgres://pu1:pu1@db:5432/pu1?sslmode=disable
+      HTTP_ADDR: ":8080"
+    networks:
+      - interna
+      - presentacion
+    depends_on:
+      db:
+        condition: service_healthy
+    # Not published: reachable only through the web proxy.
+
+  web:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    networks:
+      - presentacion
+    depends_on:
+      - api
+
+networks:
+  # db <-> api only. Not reachable from outside the compose project.
+  interna:
+    internal: true
+  # api <-> web; web publishes to the host.
+  presentacion:
+
+volumes:
+  pgdata:
