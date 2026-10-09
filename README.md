@@ -64,19 +64,32 @@ esta mejora**: es un conjunto sintético bajo los supuestos documentados.
 ## Arquitectura
 
 ```
-frontend/          React + TypeScript (Vite), nginx con proxy /api → api:8080
-  src/api.ts       wrapper fetch + X-Role simulado
-  src/pages/       Solicitudes, Tablero, Cronograma, Evaluación, Vista cuadrilla
-backend/           Go + chi + pgx
-  cmd/api          servidor HTTP (migra y siembra al arrancar)
-  cmd/evaluate     CLI de evaluación (make eval)
-  internal/domain  entidades y transiciones de estado (puro)
-  internal/rules   motor de asignación (puro): factibilidad → costo D+W+L
-  internal/sim     dataset sintético fijo + comparación determinista
-  internal/store   pgx: confirmación atómica, reasignación transaccional, lote
-  internal/httpapi endpoints JSON
-docker-compose.yml db (red interna) + api + web
+frontend/            React + TypeScript (Vite), nginx con proxy /api → api:8080
+backend/             Go + chi + pgx, organizado por capability
+  cmd/api            servidor HTTP (migra y siembra al arrancar)
+  cmd/evaluate       CLI de evaluación (make eval)
+  internal/
+    domain/          entidades, enums y invariantes (transiciones, Interval.Overlaps)
+    engine/          algoritmo puro de asignación (factibilidad → costo D+W+L)
+    fixture/         dataset sintético compartido (evaluación y seed); solo depende de domain
+    platform/
+      db/            pool, migraciones embebidas, seed, errores sentinel
+      dbtest/        BD privada por test (los features corren en paralelo)
+      httplib/       JSON, mapeo de errores a HTTP, CORS, X-Role simulado
+    features/
+      requests/      solicitudes: listar, crear, evaluar remoto/presencial
+      orders/        órdenes: listar, transiciones de estado
+      crews/         cuadrillas: carga, cronograma
+      assignments/   confirmación atómica, reasignación transaccional, demo de concurrencia
+      planning/      planificación por lote (ordena el día y coordina assignments)
+      evaluation/    comparación base vs. propuesto + método base
+    httpapi/         solo ensamblaje de rutas
+docker-compose.yml   db (red interna) + api + web
 ```
+
+Reglas de dependencia: `domain` y `engine` no importan features; `fixture` solo
+depende de `domain`; `planning` coordina servicios de `orders` y `assignments`
+(sin HTTP ni SQL propio); nadie importa a `httpapi`.
 
 **Integridad de asignaciones:** la tabla `assignments` tiene un constraint
 `EXCLUDE USING gist (crew_id, tstzrange)` parcial a los estados que ocupan

@@ -23,18 +23,18 @@ const (
 )
 
 type Request struct {
-	ID          int64     `json:"id"`
-	Customer    string    `json:"customer"`
-	ServiceType string    `json:"service_type"`
-	Description string    `json:"description"`
-	Priority    Priority  `json:"priority"`
-	LocationX   float64   `json:"location_x"`
-	LocationY   float64   `json:"location_y"`
-	WindowStart time.Time `json:"window_start"`
-	WindowEnd   time.Time `json:"window_end"`
-	DurationMin int       `json:"duration_min"`
+	ID          int64         `json:"id"`
+	Customer    string        `json:"customer"`
+	ServiceType string        `json:"service_type"`
+	Description string        `json:"description"`
+	Priority    Priority      `json:"priority"`
+	LocationX   float64       `json:"location_x"`
+	LocationY   float64       `json:"location_y"`
+	WindowStart time.Time     `json:"window_start"`
+	WindowEnd   time.Time     `json:"window_end"`
+	DurationMin int           `json:"duration_min"`
 	Status      RequestStatus `json:"status"`
-	CreatedAt   time.Time `json:"created_at"`
+	CreatedAt   time.Time     `json:"created_at"`
 }
 
 type OrderStatus string
@@ -50,12 +50,12 @@ const (
 
 // WorkOrder is a service request that requires an on-site visit.
 type WorkOrder struct {
-	ID          int64     `json:"id"`
-	RequestID   int64     `json:"request_id"`
-	Requirements []string `json:"requirements"`
-	DurationMin int       `json:"duration_min"`
-	Status      OrderStatus `json:"status"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID           int64       `json:"id"`
+	RequestID    int64       `json:"request_id"`
+	Requirements []string    `json:"requirements"`
+	DurationMin  int         `json:"duration_min"`
+	Status       OrderStatus `json:"status"`
+	CreatedAt    time.Time   `json:"created_at"`
 	// Denormalized from the request to keep the prototype simple.
 	Customer    string    `json:"customer"`
 	Priority    Priority  `json:"priority"`
@@ -68,13 +68,13 @@ type WorkOrder struct {
 
 // Crew is a field team.
 type Crew struct {
-	ID       int64    `json:"id"`
-	Name     string   `json:"name"`
-	Members  []string `json:"members"`
-	Skills   []string `json:"skills"`
-	Zone     string   `json:"zone"`
-	BaseX    float64  `json:"base_x"`
-	BaseY    float64  `json:"base_y"`
+	ID      int64    `json:"id"`
+	Name    string   `json:"name"`
+	Members []string `json:"members"`
+	Skills  []string `json:"skills"`
+	Zone    string   `json:"zone"`
+	BaseX   float64  `json:"base_x"`
+	BaseY   float64  `json:"base_y"`
 	// Daily availability in minutes from midnight (UTC wall clock).
 	AvailableFromMin int  `json:"available_from_min"`
 	AvailableToMin   int  `json:"available_to_min"`
@@ -108,6 +108,19 @@ type Assignment struct {
 	Status        AssignmentStatus `json:"status"`
 	Justification string           `json:"justification"`
 	CreatedAt     time.Time        `json:"created_at"`
+}
+
+// Interval is a busy time range on a crew's day. Overlaps is an invariant of
+// the value type itself, so it lives here rather than in a feature.
+type Interval struct {
+	Start time.Time `json:"start"`
+	End   time.Time `json:"end"`
+}
+
+// Overlaps reports whether the two intervals intersect (half-open semantics:
+// touching endpoints do not overlap).
+func (iv Interval) Overlaps(other Interval) bool {
+	return iv.Start.Before(other.End) && other.Start.Before(iv.End)
 }
 
 // OrderTransitions defines which status transitions a work order may take.

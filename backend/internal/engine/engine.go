@@ -1,11 +1,14 @@
-// Package rules implements the assignment engine as pure functions.
+// Package engine implements the assignment algorithm as pure functions.
 // No database, no HTTP: verifiable with isolated tests.
 //
 // Decision levels (PLAN.md):
 //  1. Feasibility -> mandatory filter (skills, availability, overlap, window)
 //  2. Efficiency  -> cost C = w_d·D + w_t·W + w_l·L
 //  3. Equity      -> load component L of the cost function
-package rules
+//
+// Use-case policies (batch ordering, the naive baseline selector) are NOT
+// here: they belong to the features that own those decisions.
+package engine
 
 import (
 	"math"
@@ -37,21 +40,11 @@ func DefaultRefs() Refs       { return Refs{DistanceRef: 14.14, WindowRef: 240, 
 
 // Rejection reason codes (stable for the UI).
 const (
-	ReasonInactiveCrew = "crew_inactive"
-	ReasonMissingSkill = "missing_skill"
-	ReasonNoFreeSlot   = "no_free_slot_in_window"
+	ReasonInactiveCrew    = "crew_inactive"
+	ReasonMissingSkill    = "missing_skill"
+	ReasonNoFreeSlot      = "no_free_slot_in_window"
 	ReasonAlreadyAssigned = "order_already_assigned"
 )
-
-// Interval is a busy time range on a crew's day.
-type Interval struct {
-	Start time.Time `json:"start"`
-	End   time.Time `json:"end"`
-}
-
-func (iv Interval) overlaps(other Interval) bool {
-	return iv.Start.Before(other.End) && other.Start.Before(iv.End)
-}
 
 // Candidate is the result of evaluating one crew for one order.
 type Candidate struct {
@@ -75,7 +68,7 @@ type Candidate struct {
 func EvaluateCrew(
 	crew domain.Crew,
 	order domain.WorkOrder,
-	busy []Interval,
+	busy []domain.Interval,
 	loadBefore float64,
 	totalLoadBefore float64,
 	nCrews int,
@@ -139,7 +132,7 @@ func hasSkills(crew domain.Crew, requirements []string) bool {
 
 // earliestFreeSlot: first start in the intersection of the request window and the
 // crew's availability that does not overlap any busy interval.
-func earliestFreeSlot(crew domain.Crew, order domain.WorkOrder, busy []Interval, day time.Time) (Interval, bool) {
+func earliestFreeSlot(crew domain.Crew, order domain.WorkOrder, busy []domain.Interval, day time.Time) (domain.Interval, bool) {
 	availFrom := minuteOfDayToDay(day, crew.AvailableFromMin)
 	availTo := minuteOfDayToDay(day, crew.AvailableToMin)
 	start := order.WindowStart
@@ -152,25 +145,25 @@ func earliestFreeSlot(crew domain.Crew, order domain.WorkOrder, busy []Interval,
 	}
 	dur := time.Duration(order.DurationMin) * time.Minute
 	if limit.Sub(start) < dur {
-		return Interval{}, false
+		return domain.Interval{}, false
 	}
 
-	sorted := make([]Interval, len(busy))
+	sorted := make([]domain.Interval, len(busy))
 	copy(sorted, busy)
 	sort.Slice(sorted, func(i, j int) bool { return sorted[i].Start.Before(sorted[j].Start) })
 
 	end := start.Add(dur)
 	for _, iv := range sorted {
-		cand := Interval{Start: start, End: end}
-		if cand.overlaps(iv) {
+		cand := domain.Interval{Start: start, End: end}
+		if cand.Overlaps(iv) {
 			start = iv.End
 			end = start.Add(dur)
 		}
 	}
 	if end.After(limit) {
-		return Interval{}, false
+		return domain.Interval{}, false
 	}
-	return Interval{Start: start, End: end}, true
+	return domain.Interval{Start: start, End: end}, true
 }
 
 // DistanceBetween is the Euclidean distance between two points
@@ -183,20 +176,6 @@ func minuteOfDayToDay(day time.Time, mins int) time.Time {
 	h := mins / 60
 	m := mins % 60
 	return time.Date(day.Year(), day.Month(), day.Day(), h, m, 0, 0, time.UTC)
-}
-
-// SortForPlanning: deterministic order by priority desc, window start asc, id asc.
-func SortForPlanning(orders []domain.WorkOrder) {
-	sort.SliceStable(orders, func(i, j int) bool {
-		a, b := orders[i], orders[j]
-		if a.Priority != b.Priority {
-			return a.Priority > b.Priority
-		}
-		if !a.WindowStart.Equal(b.WindowStart) {
-			return a.WindowStart.Before(b.WindowStart)
-		}
-		return a.ID < b.ID
-	})
 }
 
 // SelectProposed: lowest cost among feasible candidates; tie-break by crew id (determinism).
@@ -214,19 +193,4 @@ func SelectProposed(cands []Candidate) (Candidate, bool) {
 		}
 	}
 	return best, found
-}
-
-// SelectBase: first feasible crew by id (naive comparison method).
-func SelectBase(cands []Candidate) (Candidate, bool) {
-	sorted := make([]Candidate, len(cands))
-	copy(sorted, cands)
-	sort.SliceStable(sorted, func(i, j int) bool {
-		return sorted[i].CrewID < sorted[j].CrewID
-	})
-	for _, c := range sorted {
-		if c.Feasible {
-			return c, true
-		}
-	}
-	return Candidate{}, false
 }

@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"os"
 
-	"pu1/backend/internal/sim"
+	"pu1/backend/internal/features/evaluation"
 )
 
 func main() {
-	ev := sim.Run()
+	ev := evaluation.Run()
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(ev); err != nil {

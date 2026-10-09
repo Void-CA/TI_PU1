@@ -1,8 +1,22 @@
-package sim
+package evaluation
 
 import (
 	"testing"
+
+	"pu1/backend/internal/engine"
 )
+
+func TestSelectBasePicksLowestIdFeasible(t *testing.T) {
+	cands := []engine.Candidate{
+		{CrewID: 3, Feasible: true},
+		{CrewID: 1, Feasible: true},
+		{CrewID: 2, Feasible: false},
+	}
+	best, ok := SelectBase(cands)
+	if !ok || best.CrewID != 1 {
+		t.Fatalf("expected crew 1, got %+v (ok=%v)", best, ok)
+	}
+}
 
 func TestEvaluationDeterministic(t *testing.T) {
 	a := Run()
@@ -33,14 +47,6 @@ func TestNoConflictsUnderEitherMethod(t *testing.T) {
 
 func TestOrderWithUnknownSkillStaysUnassigned(t *testing.T) {
 	ev := Run()
-	hasOrder := func(ids []int64, id int64) bool {
-		for _, v := range ids {
-			if v == id {
-				return true
-			}
-		}
-		return false
-	}
 	if !hasOrder(ev.Base.UnassignedOrderIDs, 10) {
 		t.Fatalf("order 10 (unknown skill) must be unassigned under base method")
 	}
@@ -52,14 +58,6 @@ func TestOrderWithUnknownSkillStaysUnassigned(t *testing.T) {
 func TestSaturatedWindowStaysUnassigned(t *testing.T) {
 	// Order 5 (coax, 08:00-12:00) only fits Epsilon, whose entire window is busy.
 	ev := Run()
-	hasOrder := func(ids []int64, id int64) bool {
-		for _, v := range ids {
-			if v == id {
-				return true
-			}
-		}
-		return false
-	}
 	if !hasOrder(ev.Base.UnassignedOrderIDs, 5) || !hasOrder(ev.Proposed.UnassignedOrderIDs, 5) {
 		t.Fatalf("order 5 must be unassigned under both methods (saturated window)")
 	}
@@ -105,4 +103,13 @@ func TestHoursConservation(t *testing.T) {
 			t.Fatalf("%s: assigned count mismatch", m.name)
 		}
 	}
+}
+
+func hasOrder(ids []int64, id int64) bool {
+	for _, v := range ids {
+		if v == id {
+			return true
+		}
+	}
+	return false
 }

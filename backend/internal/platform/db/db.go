@@ -1,9 +1,7 @@
-// Package store implements persistence with pgx/PostgreSQL.
-//
-// The database is the authority on confirmed assignments: the EXCLUDE
-// constraint in the schema is the hard guarantee against double-booking,
-// and confirmation always re-verifies availability inside a transaction.
-package store
+// Package db provides shared PostgreSQL infrastructure: connection, embedded
+// migrations, the seed built from the fixture dataset, and the sentinel errors
+// that HTTP handlers map to status codes.
+package db
 
 import (
 	"context"
@@ -15,15 +13,24 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"pu1/backend/internal/sim"
+	"pu1/backend/internal/fixture"
 )
 
 //go:embed migrations/*.sql
 var migrationsFS embed.FS
 
-// OperatingDay is the single workday used by the prototype (fixed for
-// reproducibility of the demo; documented in the README).
-var OperatingDay = time.Date(2026, 10, 9, 0, 0, 0, 0, time.UTC)
+// OperatingDay is the single workday used by the prototype. Alias of the
+// fixture's day so seed and evaluation always agree.
+var OperatingDay = fixture.Day
+
+// Sentinel errors shared by all feature repositories.
+var (
+	ErrNotFound        = fmt.Errorf("not found")
+	ErrInvalidState    = fmt.Errorf("invalid state transition")
+	ErrSlotTaken       = fmt.Errorf("time slot already occupied")
+	ErrOrderNotPending = fmt.Errorf("order is not pending")
+	ErrNoJustification = fmt.Errorf("justification required")
+)
 
 type Store struct {
 	Pool *pgxpool.Pool
@@ -101,7 +108,7 @@ func (s *Store) Migrate(ctx context.Context) error {
 }
 
 // SeedIfEmpty populates crews, requests, orders and the initial schedule from
-// the fixed synthetic dataset (the same one used by the evaluation).
+// the fixture dataset.
 func (s *Store) SeedIfEmpty(ctx context.Context) error {
 	var n int
 	if err := s.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM crews`).Scan(&n); err != nil {
@@ -111,7 +118,7 @@ func (s *Store) SeedIfEmpty(ctx context.Context) error {
 		return nil
 	}
 
-	ds := sim.Build()
+	ds := fixture.Build()
 	day := OperatingDay
 
 	tx, err := s.Pool.Begin(ctx)

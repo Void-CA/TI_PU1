@@ -14,17 +14,17 @@ build:         ## Build local sin compose (backend + frontend)
 	cd backend && go build ./...
 	cd frontend && npm run build
 
-test:          ## Unit tests (reglas + simulación) y vet
-	cd backend && go vet ./... && go test ./internal/rules/ ./internal/sim/ -count=1
+test:          ## Unit tests (domain, engine, evaluación) y vet
+	cd backend && go vet ./... && go test ./internal/domain/ ./internal/engine/ ./internal/features/evaluation/ -count=1
 
-test-db:       ## Tests de integración contra PostgreSQL efímero
+test-db:       ## Tests de integración contra PostgreSQL efímero (todas las features)
 	docker rm -f pu1-testdb 2>/dev/null || true
 	docker run --rm -d --name pu1-testdb -p 5433:5432 \
 		-e POSTGRES_PASSWORD=test -e POSTGRES_USER=test -e POSTGRES_DB=pu1test \
 		postgres:17-alpine
 	sleep 4
 	cd backend && TEST_DATABASE_URL='postgres://test:test@127.0.0.1:5433/pu1test?sslmode=disable' \
-		go test ./internal/store/ -count=1
+		go test ./... -count=1
 	docker rm -f pu1-testdb
 
 eval:          ## Comparación base vs. propuesto por CLI

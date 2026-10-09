@@ -16,8 +16,9 @@ import (
 	"syscall"
 	"time"
 
+	"pu1/backend/internal/engine"
 	"pu1/backend/internal/httpapi"
-	"pu1/backend/internal/store"
+	"pu1/backend/internal/platform/db"
 )
 
 func main() {
@@ -33,7 +34,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	s, err := store.New(ctx, dsn)
+	s, err := db.New(ctx, dsn)
 	if err != nil {
 		log.Fatalf("database: %v", err)
 	}
@@ -45,12 +46,12 @@ func main() {
 	if err := s.SeedIfEmpty(ctx); err != nil {
 		log.Fatalf("seed: %v", err)
 	}
-	log.Printf("database ready (operating day %s)", store.OperatingDay.Format("2006-01-02"))
+	log.Printf("database ready (operating day %s)", db.OperatingDay.Format("2006-01-02"))
 
-	api := httpapi.NewAPI(s)
+	handler := httpapi.Router(s.Pool, db.OperatingDay, engine.DefaultWeights(), engine.DefaultRefs())
 	server := &http.Server{
 		Addr:              addr,
-		Handler:           api.Router(),
+		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
