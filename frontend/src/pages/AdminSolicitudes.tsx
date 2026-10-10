@@ -57,9 +57,10 @@ export default function AdminSolicitudes() {
         Paso 1–3 del proceso: el centro de atención recibe la solicitud y determina si se resuelve
         en remoto o requiere una orden de trabajo (intervención presencial).
       </p>
-      {error && <div className="error">{error}</div>}
+      {error && <div className="error" role="alert">{error}</div>}
 
-      <form className="card form-grid" onSubmit={create}>
+      <div className="grid cols-form">
+      <form className="panel form-grid" onSubmit={create}>
         <h3>Nueva solicitud</h3>
         <label>
           Cliente
@@ -105,37 +106,43 @@ export default function AdminSolicitudes() {
         <button type="submit" disabled={busy || !form.customer}>Registrar solicitud</button>
       </form>
 
-      <table className="table">
-        <thead>
-          <tr>
-            <th>#</th><th>Cliente</th><th>Servicio</th><th>Prioridad</th>
-            <th>Ubicación</th><th>Ventana</th><th>Dur.</th><th>Estado</th><th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {requests.map(rv => (
-            <tr key={rv.request.id}>
-              <td>{rv.request.id}</td>
-              <td>{rv.request.customer}</td>
-              <td>{rv.request.service_type}</td>
-              <td>{PRIORITY_LABEL[rv.request.priority]}</td>
-              <td>({rv.request.location_x}, {rv.request.location_y})</td>
-              <td>{hhmm(rv.request.window_start)}–{hhmm(rv.request.window_end)}</td>
-              <td>{rv.request.duration_min} min</td>
-              <td><span className={`badge st-${rv.request.status}`}>{REQUEST_STATUS_LABEL[rv.request.status] ?? rv.request.status}</span></td>
-              <td>
-                {rv.request.status === 'received' && (
-                  <>
-                    <button className="small" onClick={() => evaluate(rv.request.id, true)}>Resuelta en remoto</button>
-                    <button className="small primary" onClick={() => evaluate(rv.request.id, false)}>Generar orden</button>
-                  </>
-                )}
-                {rv.order && <span className="hint"> orden #{rv.order.id} ({rv.order.status})</span>}
-              </td>
+      <section className="panel">
+      <h3>Solicitudes registradas</h3>
+      <div className="table-wrap">
+        <table className="table">
+          <thead>
+            <tr>
+              <th scope="col">#</th><th scope="col">Cliente</th><th scope="col">Servicio</th><th scope="col">Prioridad</th>
+              <th scope="col">Ubicación</th><th scope="col">Ventana</th><th scope="col">Dur.</th><th scope="col">Estado</th><th scope="col">Acciones</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {requests.map(rv => (
+              <tr key={rv.request.id}>
+                <td className="id">{rv.request.id}</td>
+                <td>{rv.request.customer}</td>
+                <td>{rv.request.service_type}</td>
+                <td>{PRIORITY_LABEL[rv.request.priority]}</td>
+                <td>({rv.request.location_x}, {rv.request.location_y})</td>
+                <td>{hhmm(rv.request.window_start)}–{hhmm(rv.request.window_end)}</td>
+                <td>{rv.request.duration_min} min</td>
+                <td><span className={`badge st-${rv.request.status}`}>{REQUEST_STATUS_LABEL[rv.request.status] ?? rv.request.status}</span></td>
+                <td>
+                  {rv.request.status === 'received' && (
+                    <>
+                      <button className="small" onClick={() => evaluate(rv.request.id, true)}>Resuelta en remoto</button>
+                      <button className="small primary" onClick={() => evaluate(rv.request.id, false)}>Generar orden</button>
+                    </>
+                  )}
+                  {rv.order && <span className="hint"> orden #{rv.order.id} ({rv.order.status})</span>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      </section>
+      </div>
     </div>
   )
 }

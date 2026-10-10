@@ -22,54 +22,71 @@ export default function AdminEvaluacion() {
     <div>
       <h2>Evaluación: método base vs. método propuesto</h2>
       <p className="hint">
-        Ambos métodos procesan el mismo conjunto sintético fijo (12 órdenes, 5 cuadrillas, con
-        carga inicial). El comparativo es determinista y reproducible.
+        Ambos métodos procesan el mismo conjunto fijo de órdenes y cuadrillas, con las mismas
+        restricciones operativas. El comparativo es determinista y reproducible.
       </p>
       <div className="actions">
         <button className="primary" onClick={run} disabled={busy}>
           {busy ? 'Ejecutando…' : 'Ejecutar comparación'}
         </button>
       </div>
-      {error && <div className="error">{error}</div>}
+      {error && <div className="error" role="alert">{error}</div>}
 
       {ev && (
         <>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Indicador</th>
-                <th>{ev.base.label}</th>
-                <th>{ev.proposed.label}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Órdenes asignadas válidamente</td>
-                <td>{ev.base.assigned} / {ev.orders_total} ({ev.base.valid_percent.toFixed(1)}%)</td>
-                <td>{ev.proposed.assigned} / {ev.orders_total} ({ev.proposed.valid_percent.toFixed(1)}%)</td>
-              </tr>
-              <tr>
-                <td>Distancia total de desplazamiento (aprox.)</td>
-                <td>{ev.base.total_distance.toFixed(2)}</td>
-                <td className="better">{ev.proposed.total_distance.toFixed(2)}</td>
-              </tr>
-              <tr>
-                <td>Conflicto de horario</td>
-                <td>{ev.base.conflicts}</td>
-                <td>{ev.proposed.conflicts}</td>
-              </tr>
-              <tr>
-                <td>Espera total del cliente (min)</td>
-                <td>{ev.base.total_wait_min.toFixed(0)}</td>
-                <td>{ev.proposed.total_wait_min.toFixed(0)}</td>
-              </tr>
-            </tbody>
-          </table>
+          <div className="grid cols-2">
+            <section className="panel method-card">
+              <header>
+                <h3>{ev.base.label}</h3>
+                <span className="method-tag">Base</span>
+              </header>
+              <div className="stat-row">
+                <span className="stat-label">Órdenes asignadas válidamente</span>
+                <span className="stat-value">{ev.base.assigned} / {ev.orders_total} ({ev.base.valid_percent.toFixed(1)}%)</span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label">Distancia total de desplazamiento (aprox.)</span>
+                <span className="stat-value">{ev.base.total_distance.toFixed(2)}</span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label">Conflictos de horario</span>
+                <span className="stat-value">{ev.base.conflicts}</span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label">Espera total del cliente</span>
+                <span className="stat-value">{ev.base.total_wait_min.toFixed(0)} min</span>
+              </div>
+            </section>
+
+            <section className="panel method-card method-card--proposed">
+              <header>
+                <h3>{ev.proposed.label}</h3>
+                <span className="method-tag">Propuesto</span>
+              </header>
+              <div className="stat-row">
+                <span className="stat-label">Órdenes asignadas válidamente</span>
+                <span className="stat-value">{ev.proposed.assigned} / {ev.orders_total} ({ev.proposed.valid_percent.toFixed(1)}%)</span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label">Distancia total de desplazamiento (aprox.)</span>
+                <span className="stat-value better">{ev.proposed.total_distance.toFixed(2)}</span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label">Conflictos de horario</span>
+                <span className="stat-value">{ev.proposed.conflicts}</span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label">Espera total del cliente</span>
+                <span className="stat-value">{ev.proposed.total_wait_min.toFixed(0)} min</span>
+              </div>
+            </section>
+          </div>
 
           <h3>Distribución de horas por cuadrilla</h3>
+          <div className="table-wrap">
           <table className="table">
             <thead>
-              <tr><th>Cuadrilla</th><th>Antes</th><th>Después (base)</th><th>Después (propuesto)</th></tr>
+              <tr><th scope="col">Cuadrilla</th><th scope="col">Antes</th><th scope="col">Después (base)</th><th scope="col">Después (propuesto)</th></tr>
             </thead>
             <tbody>
               {ev.crews.map(name => (
@@ -82,6 +99,7 @@ export default function AdminEvaluacion() {
               ))}
             </tbody>
           </table>
+          </div>
 
           <h3>Supuestos del experimento</h3>
           <ul className="assumptions">
